@@ -23,3 +23,8 @@ BACKOFF_FACTOR = 1.0
 
 # Product source identifier
 DEFAULT_SOURCE = "bachhoaxanh"
+
+# Sitemap Discovery Settings
+SITEMAP_INDEX_URL = "https://www.bachhoaxanh.com/sitemapnew/sitemap-product"
+DEFAULT_DISCOVERY_LIMIT = 50
+DEFAULT_URLS_OUTPUT_PATH = BASE_DIR / "urls.txt"

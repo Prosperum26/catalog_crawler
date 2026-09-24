@@ -7,11 +7,14 @@ from urllib.parse import urlparse
 
 from config import (
     DEFAULT_DELAY,
+    DEFAULT_DISCOVERY_LIMIT,
     DEFAULT_TIMEOUT,
+    DEFAULT_URLS_OUTPUT_PATH,
     OUTPUT_CSV_PATH,
     OUTPUT_JSON_PATH,
     RAW_DATA_DIR,
 )
+from crawler.discovery import SitemapDiscoverer
 from crawler.http_client import HttpClient
 from crawler.models import Product
 from crawler.parser import parse_product_page
@@ -107,16 +110,45 @@ def crawl_urls(
     return successful_products
 
 
+def handle_discovery(args: argparse.Namespace) -> list[str]:
+    """Execute automated URL discovery from sitemaps."""
+    client = HttpClient(delay=args.delay, timeout=DEFAULT_TIMEOUT)
+    discoverer = SitemapDiscoverer(http_client=client)
+
+    logger.info(
+        "Starting automated URL discovery (limit=%d, category=%s, food_only=%s)...",
+        args.limit,
+        args.category or "all",
+        not args.all_categories,
+    )
+    discovered_urls = discoverer.discover(
+        limit=args.limit,
+        category_filter=args.category,
+        food_only=not args.all_categories,
+    )
+
+    output_path = Path(args.output_urls)
+    discoverer.save_urls_to_file(discovered_urls, output_path)
+    logger.info("Saved %d discovered URL(s) to %s", len(discovered_urls), output_path)
+    return discovered_urls
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(
-        description="Bach Hoa Xanh Product Catalog Crawler (MVP)"
+        description="Bach Hoa Xanh Product Catalog Crawler & Discovery"
     )
     group = parser.add_mutually_exclusive_group(required=True)
     group.add_argument("--url", type=str, help="Single public product page URL to crawl")
     group.add_argument(
         "--urls", type=str, help="Path to text file containing list of product URLs"
     )
+    group.add_argument(
+        "--discover",
+        action="store_true",
+        help="Automatically discover product URLs from sitemaps",
+    )
 
+    # General / Crawl settings
     parser.add_argument(
         "--delay",
         type=float,
@@ -134,8 +166,52 @@ def main() -> None:
         help="Overwrite output files instead of merging with existing data",
     )
 
+    # Discovery-specific settings
+    parser.add_argument(
+        "--limit",
+        type=int,
+        default=DEFAULT_DISCOVERY_LIMIT,
+        help=f"Maximum URLs to discover (default: {DEFAULT_DISCOVERY_LIMIT})",
+    )
+    parser.add_argument(
+        "--category",
+        type=str,
+        default=None,
+        help="Filter discovery by category slug (e.g. 'nuoc-mam', 'dau-an', 'sua-tuoi')",
+    )
+    parser.add_argument(
+        "--output-urls",
+        type=str,
+        default=str(DEFAULT_URLS_OUTPUT_PATH),
+        help=f"File path to save discovered URLs (default: {DEFAULT_URLS_OUTPUT_PATH})",
+    )
+    parser.add_argument(
+        "--crawl",
+        action="store_true",
+        help="If used with --discover, immediately crawl products after discovery",
+    )
+    parser.add_argument(
+        "--all-categories",
+        action="store_true",
+        help="Include non-food categories during discovery (default is food only)",
+    )
+
     args = parser.parse_args()
 
+    # 1. Discovery mode
+    if args.discover:
+        discovered = handle_discovery(args)
+        if args.crawl and discovered:
+            logger.info("Proceeding to crawl %d discovered URLs...", len(discovered))
+            crawl_urls(
+                urls=discovered,
+                delay=args.delay,
+                save_raw=args.save_raw,
+                merge_existing=not args.overwrite,
+            )
+        return
+
+    # 2. Direct crawling mode
     urls_to_crawl: list[str] = []
     if args.url:
         urls_to_crawl = [args.url.strip()]
