@@ -3,6 +3,10 @@
 Project crawler dữ liệu sản phẩm thực phẩm từ website [Bách Hóa Xanh](https://www.bachhoaxanh.com/) phục vụ cho bài toán nghiên cứu:
 **Recipe RAG → Ingredient Matching → Product Catalog → Shopping Cart**.
 
+> **Lưu ý quan trọng:** Đây là phần mềm mã nguồn mở phục vụ mục đích nghiên cứu và phát triển. Người sử dụng tự chịu trách nhiệm bảo đảm việc sử dụng crawler, các URL được truy cập và dữ liệu được lưu trữ/phân phối là hợp pháp tại nơi mình hoạt động.
+
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+
 ---
 
 ## 1. Cấu trúc Project
@@ -198,3 +202,63 @@ pytest -v
 - **Brand Extraction Pipeline**: Thêm module NER / Rule-based extractor trong bước Ingredient Matching để tách `brand` từ `name`.
 - **Ghi nhận đơn vị chuẩn hóa (Normalization)**: Chuyển đổi các đơn vị như `500ml`, `1 lít`, `500g`, `1kg` sang hệ số chuẩn (gram/ml) phục vụ tính toán định lượng công thức nấu ăn (Recipe Matching).
 - **Tải ảnh sản phẩm**: Bóc tách `image_url` từ JSON-LD hoặc tải file ảnh lưu trữ cục bộ vào `data/images/`.
+
+---
+
+## 8. Pháp lý, quyền sử dụng và trách nhiệm
+
+### 8.1. Phạm vi giấy phép
+
+Mã nguồn do tác giả của repository này viết được phát hành theo [MIT License](LICENSE). Giấy phép này áp dụng cho **mã nguồn của dự án**, không mặc nhiên cấp quyền đối với:
+
+- Nội dung, HTML, văn bản, hình ảnh, logo, tên thương mại hoặc dữ liệu của Bách Hóa Xanh hay các bên thứ ba.
+- Các URL, sitemap, API, dịch vụ hoặc website mà người sử dụng lựa chọn để truy cập.
+- Các file được tạo ra từ việc crawl, bao gồm `data/raw/`, `data/processed/` và các bản sao dữ liệu sản phẩm.
+
+Các nội dung trên có thể chịu sự điều chỉnh của điều khoản sử dụng, chính sách robots, quyền sở hữu trí tuệ, quyền cơ sở dữ liệu, quy định bảo vệ dữ liệu cá nhân và pháp luật hiện hành. Cần kiểm tra các điều kiện đó trước khi crawl, lưu trữ, sử dụng thương mại hoặc phân phối dữ liệu.
+
+### 8.2. Sử dụng có trách nhiệm
+
+Khi sử dụng dự án, bạn cần:
+
+1. Kiểm tra và tuân thủ `robots.txt`, điều khoản sử dụng và các yêu cầu kỹ thuật của website đích.
+2. Chỉ truy cập các tài nguyên mà bạn có cơ sở hợp pháp để truy cập; không vượt qua CAPTCHA, paywall, cơ chế xác thực, giới hạn truy cập hoặc biện pháp bảo vệ kỹ thuật.
+3. Giữ mức tải hợp lý. Crawler có delay mặc định `1.5` giây giữa các request và có retry; không nên giảm delay nếu chưa đánh giá tác động lên website đích.
+4. Tôn trọng yêu cầu gỡ bỏ hoặc hạn chế truy cập từ chủ sở hữu website.
+5. Kiểm tra dữ liệu trước khi công bố. Không công khai thông tin cá nhân, token, cookie, header nhạy cảm, hoặc nội dung được lưu từ trang đích nếu không có quyền phù hợp.
+6. Xóa dữ liệu không còn cần thiết và không dùng dữ liệu crawl để gây hiểu nhầm rằng dự án được Bách Hóa Xanh tài trợ, xác nhận hoặc liên kết.
+
+Repository này không tự động bảo đảm rằng mọi website hoặc mọi cách sử dụng đều được phép. Việc đặt một URL công khai trong sitemap không đồng nghĩa với việc mọi hình thức thu thập hoặc phân phối dữ liệu từ URL đó đều được cấp phép.
+
+### 8.3. Dữ liệu đầu ra và nội dung bên thứ ba
+
+Các file output chỉ là kết quả kỹ thuật của quá trình xử lý. Người sử dụng phải tự xác minh nguồn gốc, độ chính xác, thời điểm cập nhật và quyền sử dụng của từng trường dữ liệu trước khi đưa vào sản phẩm, cơ sở dữ liệu công khai hoặc dịch vụ thương mại.
+
+Không nên commit dữ liệu crawl, HTML thô, hình ảnh hoặc nội dung có bản quyền vào repository công khai nếu chưa có quyền cần thiết. Kiểm tra lịch sử Git trước khi publish vì việc thêm file vào `.gitignore` không xóa các file đã được track trước đó.
+
+### 8.4. Nhãn hiệu và không liên kết
+
+“Bách Hóa Xanh” và các tên, logo, nhãn hiệu xuất hiện trong dữ liệu là tài sản của chủ sở hữu tương ứng. Dự án này không tuyên bố có quan hệ đối tác, được chứng thực, tài trợ hoặc liên kết với Bách Hóa Xanh. Tên thương hiệu chỉ được dùng để mô tả nguồn dữ liệu mà crawler hỗ trợ.
+
+### 8.5. Tuyên bố miễn trừ trách nhiệm
+
+Phần mềm được cung cấp theo nguyên trạng, không có bảo đảm về tính chính xác, tính sẵn sàng, tính hợp pháp của dữ liệu thu thập hoặc sự phù hợp cho một mục đích cụ thể. Tác giả không chịu trách nhiệm cho thiệt hại, gián đoạn dịch vụ, vi phạm điều khoản, hoặc khiếu nại phát sinh từ việc người khác sử dụng phần mềm hay dữ liệu đầu ra.
+
+Nội dung này là hướng dẫn sử dụng có trách nhiệm, không phải tư vấn pháp lý. Khi triển khai cho mục đích thương mại, quy mô lớn hoặc tại khu vực pháp lý cụ thể, hãy tham khảo luật sư hoặc chuyên gia phù hợp.
+
+## 9. Dependencies và giấy phép bên thứ ba
+
+Dự án sử dụng các package được khai báo trong [requirements.txt](requirements.txt). Mỗi package có giấy phép và điều kiện riêng; việc sử dụng package không làm thay đổi giấy phép của mã nguồn dự án. Hãy kiểm tra metadata và file license của phiên bản package thực tế trước khi phân phối sản phẩm kèm theo dependencies.
+
+## 10. Tác giả và đóng góp
+
+Thông tin tác giả, liên hệ và quy tắc đóng góp có thể được bổ sung tại đây trước khi public repository. Không đưa API key, cookie, thông tin tài khoản, dữ liệu cá nhân hoặc dữ liệu crawl chưa được kiểm tra vào issue, pull request hay commit.
+
+## 11. Checklist trước khi public
+
+- Thay `[YOUR NAME OR ORGANIZATION]` trong [LICENSE](LICENSE) bằng tên chủ bản quyền thực tế.
+- Kiểm tra lại điều khoản sử dụng và `robots.txt` của nguồn dữ liệu tại thời điểm sử dụng.
+- Xóa hoặc rà soát `data/raw/`, `data/processed/`, `urls.txt` và các file crawl trước khi commit.
+- Quét repository để bảo đảm không có API key, cookie, token, thông tin cá nhân hoặc file nội bộ.
+- Chạy `python -m pytest -v` và kiểm tra nội dung output trước khi phân phối.
+- Nếu dự án được dùng thương mại hoặc crawl quy mô lớn, xin đánh giá pháp lý riêng trước khi triển khai.
