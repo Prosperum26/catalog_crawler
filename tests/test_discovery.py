@@ -107,11 +107,15 @@ def test_sitemap_discoverer_food_filtering():
     assert len(urls) == 3
     assert all("bot-giat" not in u and "sua-tam" not in u for u in urls)
 
-    # 2. Discover with limit = 2
+    # 2. Discover all matching URLs without a collection limit
+    urls_unlimited = discoverer.discover(limit=None, food_only=True)
+    assert len(urls_unlimited) == 3
+
+    # 3. Discover with limit = 2
     urls_limited = discoverer.discover(limit=2, food_only=True)
     assert len(urls_limited) == 2
 
-    # 3. Discover with category filter
+    # 4. Discover with category filter
     urls_nuoc_mam = discoverer.discover(limit=10, category_filter="nuoc-mam")
     assert len(urls_nuoc_mam) == 2
     assert all("nuoc-mam" in u for u in urls_nuoc_mam)

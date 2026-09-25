@@ -74,6 +74,9 @@ Không cần nhập link bằng tay, crawler có thể tự động duyệt cây
 # Tự động quét 50 URL thực phẩm đầu tiên và lưu vào urls.txt
 python main.py --discover --limit 50
 
+# Quét tất cả URL phù hợp trong toàn bộ sitemap
+python main.py --discover --all-urls
+
 # Quét URL của một ngành hàng thực phẩm cụ thể (ví dụ: nước mắm)
 python main.py --discover --category nuoc-mam --limit 20
 
@@ -86,6 +89,7 @@ python main.py --discover --category sua-tuoi --limit 10 --crawl
 
 Các tùy chọn cho `--discover`:
 - `--limit <số lượng>`: Giới hạn số lượng URL muốn lấy (mặc định: `50`).
+- `--all-urls`: Bỏ giới hạn số lượng, duyệt tất cả sitemap con và lấy mọi URL phù hợp bộ lọc.
 - `--category <slug>`: Lọc theo ngành hàng (ví dụ: `nuoc-mam`, `dau-an`, `sua-tuoi`, `gao`, `thit-heo`...).
 - `--output-urls <đường dẫn>`: File lưu danh sách URL (mặc định: `urls.txt`).
 - `--crawl`: Kích hoạt cào dữ liệu ngay sau khi quét xong URL.

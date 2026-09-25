@@ -82,7 +82,7 @@ class SitemapDiscoverer:
 
     def discover(
         self,
-        limit: int = 50,
+        limit: Optional[int] = 50,
         category_filter: Optional[str] = None,
         food_only: bool = True,
         max_sub_sitemaps: Optional[int] = None,
@@ -91,7 +91,8 @@ class SitemapDiscoverer:
         Discover product URLs from the sitemap hierarchy.
 
         Args:
-            limit: Maximum number of product URLs to collect.
+            limit: Maximum number of product URLs to collect. Use None to
+                collect all matching URLs.
             category_filter: Optional slug to filter by specific category (e.g. 'nuoc-mam').
             food_only: If True, exclude household/non-food categories.
             max_sub_sitemaps: Optional limit on number of sub-sitemaps to traverse.
@@ -115,7 +116,7 @@ class SitemapDiscoverer:
         seen_urls: set[str] = set()
 
         for idx, sub_url in enumerate(sub_sitemaps, start=1):
-            if len(discovered_urls) >= limit:
+            if limit is not None and len(discovered_urls) >= limit:
                 break
 
             logger.info(
@@ -147,13 +148,13 @@ class SitemapDiscoverer:
                 seen_urls.add(prod_url)
                 discovered_urls.append(prod_url)
 
-                if len(discovered_urls) >= limit:
+                if limit is not None and len(discovered_urls) >= limit:
                     break
 
         logger.info(
-            "Discovery finished. Collected %d product URLs (limit was %d).",
+            "Discovery finished. Collected %d product URLs (limit was %s).",
             len(discovered_urls),
-            limit,
+            limit if limit is not None else "unlimited",
         )
         return discovered_urls
 

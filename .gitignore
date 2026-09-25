@@ -25,3 +25,6 @@ data/processed/*
 .pytest_cache/
 .coverage
 htmlcov/
+
+# Urls
+urls.txt

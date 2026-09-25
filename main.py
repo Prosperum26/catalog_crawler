@@ -116,13 +116,13 @@ def handle_discovery(args: argparse.Namespace) -> list[str]:
     discoverer = SitemapDiscoverer(http_client=client)
 
     logger.info(
-        "Starting automated URL discovery (limit=%d, category=%s, food_only=%s)...",
-        args.limit,
+        "Starting automated URL discovery (limit=%s, category=%s, food_only=%s)...",
+        args.limit if not args.all_urls else "unlimited",
         args.category or "all",
         not args.all_categories,
     )
     discovered_urls = discoverer.discover(
-        limit=args.limit,
+        limit=None if args.all_urls else args.limit,
         category_filter=args.category,
         food_only=not args.all_categories,
     )
@@ -172,6 +172,11 @@ def main() -> None:
         type=int,
         default=DEFAULT_DISCOVERY_LIMIT,
         help=f"Maximum URLs to discover (default: {DEFAULT_DISCOVERY_LIMIT})",
+    )
+    parser.add_argument(
+        "--all-urls",
+        action="store_true",
+        help="Discover all matching product URLs from every sitemap",
     )
     parser.add_argument(
         "--category",
