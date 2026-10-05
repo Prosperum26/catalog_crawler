@@ -8,6 +8,9 @@ from crawler.models import Product
 
 logger = logging.getLogger(__name__)
 
+# Separator used to flatten list fields (e.g. image_urls) into a single CSV cell
+CSV_LIST_SEPARATOR = " | "
+
 CSV_FIELDNAMES = [
     "name",
     "brand",
@@ -15,6 +18,9 @@ CSV_FIELDNAMES = [
     "price",
     "unit",
     "product_url",
+    "image_url",
+    "image_urls",
+    "image_paths",
     "source",
     "crawled_at",
 ]
@@ -50,6 +56,15 @@ def save_products_to_json(
     logger.info("Saved %d products to JSON: %s", len(items_by_url), output_path)
 
 
+def _to_csv_row(product: Product) -> dict:
+    """Flatten list fields so they fit in a single CSV cell."""
+    row = product.to_dict()
+    for key, value in row.items():
+        if isinstance(value, list):
+            row[key] = CSV_LIST_SEPARATOR.join(str(v) for v in value)
+    return row
+
+
 def save_products_to_csv(
     products: Sequence[Product],
     output_path: Path,
@@ -73,10 +88,10 @@ def save_products_to_csv(
             logger.warning("Could not read existing CSV file %s: %s", output_path, e)
 
     for prod in products:
-        items_by_url[prod.product_url] = prod.to_dict()
+        items_by_url[prod.product_url] = _to_csv_row(prod)
 
     with open(output_path, "w", encoding="utf-8-sig", newline="") as f:
-        writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES)
+        writer = csv.DictWriter(f, fieldnames=CSV_FIELDNAMES, extrasaction="ignore")
         writer.writeheader()
         for item in items_by_url.values():
             writer.writerow(item)

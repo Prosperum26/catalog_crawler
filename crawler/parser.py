@@ -2,6 +2,7 @@ import json
 import logging
 import re
 from typing import Any, Optional
+from urllib.parse import urljoin
 
 from bs4 import BeautifulSoup
 
@@ -213,6 +214,43 @@ def parse_unit(
     return None
 
 
+def parse_image_urls(
+    soup: BeautifulSoup,
+    json_ld: Optional[dict[str, Any]] = None,
+    base_url: str = "",
+) -> list[str]:
+    """Parse product image URLs from JSON-LD and og:image, deduplicated in page order."""
+    candidates: list[str] = []
+
+    def collect(value: Any) -> None:
+        if isinstance(value, str):
+            candidates.append(value)
+        elif isinstance(value, dict):
+            # Schema.org ImageObject
+            collect(value.get("url") or value.get("contentUrl"))
+        elif isinstance(value, list):
+            for item in value:
+                collect(item)
+
+    # 1. From JSON-LD (string, list, or ImageObject)
+    if json_ld:
+        collect(json_ld.get("image"))
+
+    # 2. From OpenGraph meta tags
+    for og_image in soup.find_all("meta", property="og:image"):
+        collect(og_image.get("content"))
+
+    image_urls: list[str] = []
+    for raw in candidates:
+        raw = raw.strip()
+        if not raw or raw.startswith("data:"):
+            continue
+        absolute = urljoin(base_url, raw)
+        if absolute not in image_urls:
+            image_urls.append(absolute)
+    return image_urls
+
+
 def parse_product_page(html: str, url: str) -> Optional[Product]:
     """Parse an HTML document into a Product model."""
     soup = BeautifulSoup(html, "html.parser")
@@ -233,6 +271,8 @@ def parse_product_page(html: str, url: str) -> Optional[Product]:
     if json_ld and json_ld.get("url"):
         product_url = str(json_ld["url"])
 
+    image_urls = parse_image_urls(soup, json_ld, base_url=product_url)
+
     return Product(
         name=name,
         brand=brand,
@@ -240,5 +280,7 @@ def parse_product_page(html: str, url: str) -> Optional[Product]:
         price=price,
         unit=unit,
         product_url=product_url,
+        image_url=image_urls[0] if image_urls else None,
+        image_urls=image_urls,
         source=DEFAULT_SOURCE,
     )

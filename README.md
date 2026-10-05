@@ -23,16 +23,20 @@ catalog_crawler/
 │   ├── __init__.py
 │   ├── discovery.py      # Tự động quét và phát hiện URL từ XML Sitemaps
 │   ├── http_client.py    # HTTP client (delay, timeout, retry, session)
+│   ├── images.py         # Tải ảnh sản phẩm về local (--download-images)
 │   ├── models.py         # Product dataclass & serialization
 │   ├── parser.py         # Parsing logic (JSON-LD Schema.org & HTML fallback)
 │   └── storage.py        # Lưu kết quả ra JSON và CSV (hỗ trợ Excel/DataGrip)
 ├── data/
 │   ├── raw/              # Lưu file HTML gốc (nếu bật --save-raw)
+│   ├── images/           # Ảnh sản phẩm (nếu bật --download-images)
 │   └── processed/        # Chứa products.json và products.csv
 └── tests/
     ├── __init__.py
     ├── test_discovery.py # Unit tests cho Sitemap URL Discovery
-    └── test_parser.py    # Unit tests cho HTML/JSON-LD Parser
+    ├── test_images.py    # Unit tests cho module tải ảnh
+    ├── test_parser.py    # Unit tests cho HTML/JSON-LD Parser
+    └── test_storage.py   # Unit tests cho xuất JSON/CSV
 ```
 
 ---
@@ -115,11 +119,15 @@ python main.py --url "https://www.bachhoaxanh.com/nuoc-mam/nuoc-mam-nam-ngu-phu-
 
 - `--delay <giây>`: Khoảng nghỉ giữa các request (mặc định: `1.5` giây để không làm phiền server).
 - `--save-raw`: Lưu bản sao HTML thô vào thư mục `data/raw/` phục vụ debug/re-parse sau này.
+- `--download-images`: Tải ảnh sản phẩm về `data/images/` (tên file theo slug URL sản phẩm, ví dụ `nuoc-mam_nuoc-mam-nam-ngu-...jpg`). Ảnh đã có sẵn sẽ không tải lại. URL ảnh (`image_url`, `image_urls`) luôn được trích xuất kể cả khi không bật cờ này.
 - `--overwrite`: Ghi đè file output thay vì merge với các sản phẩm đã crawl trước đó.
 
 Ví dụ:
 ```bash
 python main.py --urls urls.txt --delay 2.0 --save-raw
+
+# Crawl kèm tải ảnh sản phẩm về local
+python main.py --urls urls.txt --download-images
 ```
 
 ---
@@ -144,6 +152,9 @@ Dữ liệu sau khi crawl được tự động xuất ra 2 file trong `data/pro
   "price": 71000,
   "unit": "chai 500ml",
   "product_url": "https://www.bachhoaxanh.com/nuoc-mam/nuoc-mam-nam-ngu-phu-quoc-dam-dac-32-do-dam-chai-500ml",
+  "image_url": "https://cdnv2.tgdd.vn/bhx-static/bhx/.../nuoc-mam-nam-ngu-phu-quoc-dam-dac-32-do-dam-chai-500ml_202608261450547356.jpg",
+  "image_urls": ["https://cdnv2.tgdd.vn/bhx-static/bhx/.../nuoc-mam-nam-ngu-phu-quoc-dam-dac-32-do-dam-chai-500ml_202608261450547356.jpg"],
+  "image_paths": ["data/images/nuoc-mam_nuoc-mam-nam-ngu-phu-quoc-dam-dac-32-do-dam-chai-500ml.jpg"],
   "source": "bachhoaxanh",
   "crawled_at": "2026-09-24T14:59:36.964104+00:00"
 }
@@ -151,25 +162,30 @@ Dữ liệu sau khi crawl được tự động xuất ra 2 file trong `data/pro
 
 *Nguyên tắc: Không suy đoán dữ liệu nếu trang không cung cấp (để giá trị `null`).*
 
+Về các trường ảnh:
+- `image_url`: ảnh chính (ảnh đầu tiên), `image_urls`: toàn bộ ảnh tìm thấy, lấy từ JSON-LD `image` (string / list / `ImageObject`) rồi đến `og:image`, đã khử trùng lặp. HTML tĩnh hiện chỉ có 1 ảnh/sản phẩm; gallery đầy đủ được render phía client nên chưa lấy được.
+- `image_paths`: đường dẫn file ảnh local (tương đối so với thư mục project), chỉ có giá trị khi chạy với `--download-images`. Lưu ý: crawl lại không kèm cờ này sẽ ghi đè `image_paths` thành rỗng (file ảnh trên đĩa vẫn giữ nguyên).
+- Trong CSV, các trường dạng list được nối bằng ` | `.
+
 ---
 
 ## 5. Cách thêm Field mới
 
-Nếu muốn thêm trường mới (ví dụ: `image_url`, `description`, `sku`):
+Nếu muốn thêm trường mới (ví dụ: `description`, `sku`):
 
 1. **Cập nhật Model** trong `crawler/models.py`:
    ```python
    @dataclass
    class Product:
        ...
-       image_url: Optional[str] = None
+       sku: Optional[str] = None
    ```
 2. **Cập nhật Parser** trong `crawler/parser.py`:
    - Viết hàm parse tương ứng:
      ```python
-     def parse_image_url(soup: BeautifulSoup, json_ld: Optional[dict]) -> Optional[str]:
-         if json_ld and json_ld.get("image"):
-             return str(json_ld["image"])
+     def parse_sku(soup: BeautifulSoup, json_ld: Optional[dict]) -> Optional[str]:
+         if json_ld and json_ld.get("sku"):
+             return str(json_ld["sku"])
          return None
      ```
    - Gọi hàm này trong `parse_product_page(...)`.
@@ -201,7 +217,7 @@ pytest -v
 ### Đề xuất cho các version tiếp theo:
 - **Brand Extraction Pipeline**: Thêm module NER / Rule-based extractor trong bước Ingredient Matching để tách `brand` từ `name`.
 - **Ghi nhận đơn vị chuẩn hóa (Normalization)**: Chuyển đổi các đơn vị như `500ml`, `1 lít`, `500g`, `1kg` sang hệ số chuẩn (gram/ml) phục vụ tính toán định lượng công thức nấu ăn (Recipe Matching).
-- **Tải ảnh sản phẩm**: Bóc tách `image_url` từ JSON-LD hoặc tải file ảnh lưu trữ cục bộ vào `data/images/`.
+- **Gallery ảnh đầy đủ**: Hiện chỉ lấy được ảnh chính trong HTML tĩnh; muốn lấy toàn bộ gallery cần phân tích payload Next.js/RSC hoặc API của trang.
 
 ---
 

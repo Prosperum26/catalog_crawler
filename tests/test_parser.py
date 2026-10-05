@@ -6,6 +6,7 @@ from crawler.parser import (
     extract_product_json_ld,
     parse_brand,
     parse_category,
+    parse_image_urls,
     parse_price,
     parse_product_name,
     parse_product_page,
@@ -192,3 +193,59 @@ def test_parse_product_page_minimal_no_guessing():
     assert product.price is None
     assert product.unit == "500g"
     assert product.source == "bachhoaxanh"
+
+
+def test_parse_image_urls_from_json_ld_string():
+    html = MOCK_HTML_BHX_JSON_LD.replace(
+        '"category": "Nước mắm",',
+        '"category": "Nước mắm",\n      "image": "https://cdn.example.com/Products/1/nuoc-mam.jpg",',
+    )
+    soup = BeautifulSoup(html, "html.parser")
+    json_ld = extract_product_json_ld(soup)
+    assert parse_image_urls(soup, json_ld) == ["https://cdn.example.com/Products/1/nuoc-mam.jpg"]
+
+
+def test_parse_image_urls_list_image_object_and_og_dedup():
+    html = """
+    <html><head>
+    <meta property="og:image" content="https://cdn.example.com/a.jpg">
+    <script type="application/ld+json">
+    {"@type": "Product", "name": "X",
+     "image": ["https://cdn.example.com/a.jpg",
+               {"@type": "ImageObject", "url": "https://cdn.example.com/b.png"},
+               "/images/c.webp"]}
+    </script></head><body></body></html>
+    """
+    soup = BeautifulSoup(html, "html.parser")
+    json_ld = extract_product_json_ld(soup)
+    assert parse_image_urls(soup, json_ld, base_url="https://www.bachhoaxanh.com/x/y") == [
+        "https://cdn.example.com/a.jpg",
+        "https://cdn.example.com/b.png",
+        "https://www.bachhoaxanh.com/images/c.webp",
+    ]
+
+
+def test_parse_image_urls_og_fallback_and_missing():
+    html = '<html><head><meta property="og:image" content="//cdn.example.com/og.jpg"></head></html>'
+    soup = BeautifulSoup(html, "html.parser")
+    assert parse_image_urls(soup, None, base_url="https://www.bachhoaxanh.com/p") == [
+        "https://cdn.example.com/og.jpg"
+    ]
+
+    soup_min = BeautifulSoup(MOCK_HTML_MINIMAL, "html.parser")
+    assert parse_image_urls(soup_min, None) == []
+
+
+def test_parse_product_page_sets_image_fields():
+    url = "https://www.bachhoaxanh.com/rau/rau-muong-500g"
+    html = MOCK_HTML_MINIMAL.replace(
+        "</head>", '<meta property="og:image" content="https://cdn.example.com/rau.jpg"></head>'
+    )
+    product = parse_product_page(html, url)
+    assert product.image_url == "https://cdn.example.com/rau.jpg"
+    assert product.image_urls == ["https://cdn.example.com/rau.jpg"]
+    assert product.image_paths == []
+
+    no_image = parse_product_page(MOCK_HTML_MINIMAL, url)
+    assert no_image.image_url is None
+    assert no_image.image_urls == []

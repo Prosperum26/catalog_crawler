@@ -6,16 +6,19 @@ from pathlib import Path
 from urllib.parse import urlparse
 
 from config import (
+    BASE_DIR,
     DEFAULT_DELAY,
     DEFAULT_DISCOVERY_LIMIT,
     DEFAULT_TIMEOUT,
     DEFAULT_URLS_OUTPUT_PATH,
+    IMAGES_DIR,
     OUTPUT_CSV_PATH,
     OUTPUT_JSON_PATH,
     RAW_DATA_DIR,
 )
 from crawler.discovery import SitemapDiscoverer
 from crawler.http_client import HttpClient
+from crawler.images import download_product_images
 from crawler.models import Product
 from crawler.parser import parse_product_page
 from crawler.storage import save_products_to_csv, save_products_to_json
@@ -56,6 +59,7 @@ def crawl_urls(
     delay: float = DEFAULT_DELAY,
     save_raw: bool = False,
     merge_existing: bool = True,
+    download_images: bool = False,
 ) -> list[Product]:
     """Crawl and parse product details from a list of URLs."""
     client = HttpClient(delay=delay, timeout=DEFAULT_TIMEOUT)
@@ -80,13 +84,18 @@ def crawl_urls(
 
         product = parse_product_page(html, url)
         if product:
+            if download_images and product.image_urls:
+                download_product_images(
+                    product, client, IMAGES_DIR, relative_to=BASE_DIR
+                )
             successful_products.append(product)
             logger.info(
-                "Parsed: '%s' | Category: %s | Price: %s VND | Unit: %s",
+                "Parsed: '%s' | Category: %s | Price: %s VND | Unit: %s | Images: %d",
                 product.name,
                 product.category or "N/A",
                 f"{product.price:,}" if product.price is not None else "N/A",
                 product.unit or "N/A",
+                len(product.image_urls),
             )
         else:
             logger.warning(
@@ -161,6 +170,11 @@ def main() -> None:
         help="Save raw HTML files to data/raw/ directory",
     )
     parser.add_argument(
+        "--download-images",
+        action="store_true",
+        help="Download product images to data/images/ (image URLs are always extracted)",
+    )
+    parser.add_argument(
         "--overwrite",
         action="store_true",
         help="Overwrite output files instead of merging with existing data",
@@ -213,6 +227,7 @@ def main() -> None:
                 delay=args.delay,
                 save_raw=args.save_raw,
                 merge_existing=not args.overwrite,
+                download_images=args.download_images,
             )
         return
 
@@ -232,6 +247,7 @@ def main() -> None:
         delay=args.delay,
         save_raw=args.save_raw,
         merge_existing=not args.overwrite,
+        download_images=args.download_images,
     )
 
 

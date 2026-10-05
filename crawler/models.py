@@ -1,4 +1,4 @@
-from dataclasses import dataclass, asdict
+from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from typing import Optional
 
@@ -13,6 +13,9 @@ class Product:
     price: Optional[int] = None
     unit: Optional[str] = None
     product_url: str = ""
+    image_url: Optional[str] = None
+    image_urls: list[str] = field(default_factory=list)
+    image_paths: list[str] = field(default_factory=list)
     source: str = "bachhoaxanh"
     crawled_at: str = ""
 

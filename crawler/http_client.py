@@ -54,16 +54,33 @@ class HttpClient:
         Fetch HTML content from a public URL with retry logic for transient errors.
         Returns HTML string on success, or None on failure.
         """
+        resp = self._get(url)
+        return resp.text if resp is not None else None
+
+    def fetch_bytes(self, url: str) -> Optional[tuple[bytes, str]]:
+        """
+        Fetch binary content (e.g. a product image) with the same retry logic.
+        Returns (content, content_type) on success, or None on failure.
+        """
+        resp = self._get(url, headers={"Accept": "image/avif,image/webp,image/*,*/*;q=0.8"})
+        if resp is None:
+            return None
+        return resp.content, resp.headers.get("Content-Type", "")
+
+    def _get(
+        self, url: str, headers: Optional[dict[str, str]] = None
+    ) -> Optional[requests.Response]:
+        """GET a URL with rate limiting and retries. Returns the 200 response or None."""
         for attempt in range(self.max_retries + 1):
             try:
                 self._apply_rate_limit()
                 self._last_request_time = time.time()
 
                 logger.info("Requesting URL [attempt %d/%d]: %s", attempt + 1, self.max_retries + 1, url)
-                resp = self.session.get(url, timeout=self.timeout)
+                resp = self.session.get(url, timeout=self.timeout, headers=headers)
 
                 if resp.status_code == 200:
-                    return resp.text
+                    return resp
 
                 # Client error (e.g. 404 Not Found, 403 Forbidden) - do not retry
                 if 400 <= resp.status_code < 500:
